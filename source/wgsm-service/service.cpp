@@ -174,16 +174,19 @@ BOOL CService::Stop()
 	if (m_hNotify)
 	{
 		CancelMibChangeNotify2(m_hNotify);
+		m_hNotify = nullptr;
 	}
 
 	if (m_hService)
 	{
 		CloseServiceHandle(m_hService);
+		m_hService = nullptr;
 	}
 
 	if (m_hSCManager)
 	{
 		CloseServiceHandle(m_hSCManager);
+		m_hSCManager = nullptr;
 	}
 
 	CEventLog::getInstance().Report(EVENTLOG_SUCCESS, IDS_SERVICE_STOPPED, S_OK);
@@ -259,13 +262,14 @@ HRESULT CService::GetState(enState* enWGState)
 
 HRESULT CService::Connect()
 {
+	std::unique_lock<std::mutex> gl(m_mWGServiceLock);
+
 	// Activate manual mode
 	if (m_hNotify)
 	{
 		CancelMibChangeNotify2(m_hNotify);
+		m_hNotify = nullptr;
 	}
-
-	std::unique_lock<std::mutex> gl(m_mWGServiceLock);
 
 	if (0 == StartService(CService::Inst()->m_hService, 0, nullptr))
 	{
@@ -280,13 +284,14 @@ HRESULT CService::Connect()
 
 HRESULT CService::Disconnect()
 {
+	std::unique_lock<std::mutex> gl(m_mWGServiceLock);
+
 	// Activate manual mode
 	if (m_hNotify)
 	{
 		CancelMibChangeNotify2(m_hNotify);
+		m_hNotify = nullptr;
 	}
-
-	std::unique_lock<std::mutex> gl(m_mWGServiceLock);
 
 	SERVICE_STATUS serviceStatus = { 0 };
 	if (0 == ControlService(CService::Inst()->m_hService, SERVICE_CONTROL_STOP, &serviceStatus))
