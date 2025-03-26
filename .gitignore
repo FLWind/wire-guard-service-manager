@@ -1,0 +1,7 @@
+build/**
+intermediate/**
+
+*.vcxproj.user
+**/.vs/**
+
+*.aps

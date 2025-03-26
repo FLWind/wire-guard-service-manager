@@ -1,0 +1,23 @@
+import "oaidl.idl";
+import "ocidl.idl";
+
+typedef enum
+{
+	enConnect = 0,
+	enDisconnect = 1,
+	enPending = 2
+} enState;
+
+//////////////////////////////////////////////////////
+// interface IWGServiceManager
+[
+	uuid(5D86F4CC-9F61-4462-A35D-D0E890EC82EA),
+		version(1.0),
+		pointer_default(unique)
+]
+interface IWGServiceManager
+{
+	long IWGSM_WGGetState([out]enState* enWGState);
+	long IWGSM_WGConnect();
+	long IWGSM_WGDisconnect();
+}

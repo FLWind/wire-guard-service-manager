@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	
+	<?if $(var.Platform)="x86"?>
+		<?define PDIR = "Win32"?>
+		<?define PF = "ProgramFilesFolder"?>
+		<?define W64 = "no"?>
+	<?elseif $(var.Platform)="x64"?>
+		<?define PDIR = "x64"?>
+		<?define PF = "ProgramFiles64Folder"?>
+		<?define W64 = "yes"?>
+	<?elseif $(var.Platform)="ARM64"?>
+		<?define PDIR = "ARM64"?>
+		<?define PF = "ProgramFilesArm64Folder"?>
+		<?define W64 = "yes"?>
+	<?endif ?>
+	
+	<Product Id="*" Name="WireGuard Service Manager" Language="1033" Version="0.0.0.1" Manufacturer="FLWind" UpgradeCode="433d1c9a-8adc-4590-9b53-133596eaad96">
+		<Package InstallerVersion="500" Comments="Copyright © 2025" Manufacturer="FLWind" Description="WireGuard Service Manager" Compressed="yes" InstallScope="perMachine" InstallPrivileges="elevated" />
+
+		<MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+		<MediaTemplate EmbedCab="yes" />
+
+		<Property Id="ARPNOREPAIR" Value="1"/>
+		<SetProperty Id="ARPNOMODIFY" Value="1" After="InstallValidate" Sequence="execute"/>
+		<Property Id="ARPPRODUCTICON" Value="wgsm.ico" />
+
+		<WixVariable Id="WixUIBannerBmp" Value="$(var.ProjectDir)WixUIBanner.bmp" />
+		<WixVariable Id="WixUIDialogBmp" Value="$(var.ProjectDir)WixUIDialog.bmp" />
+		<WixVariable Id="WixUILicenseRtf" Value="$(var.ProjectDir)eula.rtf" />
+		<UIRef Id="WixUI_Minimal" />
+
+		<Feature Id="ProductFeature" Title="WireGuard Service Manager" Level="1">
+			<ComponentGroupRef Id="ProductComponents" />
+			<ComponentGroupRef Id="Shortcuts" />
+		</Feature>
+	</Product>
+
+	<Fragment>
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="$(var.PF)">
+				<Directory Id="INSTALLFOLDER" Name="WireGuard Service Manager" />
+			</Directory>
+			<Directory Id="ProgramMenuFolder" Name=".">
+				<Directory Id="SHORTCUTSFOLDER" Name="WireGuard Service Manager"/>
+			</Directory>
+		</Directory>
+	</Fragment>
+
+	<Fragment>
+		<ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+			<Component Id="Service" Guid="FE26F6E0-9259-4580-A648-61BCB17E721C" Win64="$(var.W64)">
+				<ServiceControl Id="WGSM" Name="WGSM" Remove="both" Wait="yes" />
+				<ServiceInstall Id="WGSM" Name="WGSM" DisplayName="WireGuard Service Manager" Type="ownProcess" Interactive="no" Start="auto" ErrorControl="ignore" />
+				<File Id="wgsm.service.exe" Name="wgsm-service.exe" Source="$(var.SolutionDir)build\wgsm-service\$(var.PDIR)\$(var.Configuration)\wgsm-service.exe" DiskId="1" />
+				<RegistryValue Root="HKLM" Key="Software\WireGuard Service Manager" Name="EnableLog" Type="integer" Value="1" />
+				<RegistryValue Root="HKLM" Key="Software\WireGuard Service Manager" Name="WireGuardServiceName" Type="string" Value="" />
+				<RegistryValue Root="HKLM" Key="Software\WireGuard Service Manager" Name="AutoConnectDNSZone" Type="string" Value="" />
+			</Component>
+			<Component Id="Tray" Guid="8D80C485-CBE7-409E-A649-1D5067679132" Win64="$(var.W64)">
+				<RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Run" ForceCreateOnInstall="yes"/>
+				<RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Run" Name="WireGuard Service Manager" Type="string" Value="[INSTALLFOLDER]wgsm-tray.exe" />
+				<File Id="wgsm.tray.exe" Name="wgsm-tray.exe" Source="$(var.SolutionDir)build\wgsm-tray\$(var.PDIR)\$(var.Configuration)\wgsm-tray.exe" DiskId="1" />
+			</Component>
+		</ComponentGroup>
+		<ComponentGroup Id="Shortcuts" Directory="SHORTCUTSFOLDER">
+			<Component Id="TrayShortcut" Guid="70C77E76-E388-4E49-9AC7-E900E48891FA" Win64="$(var.W64)" >
+				<Shortcut Id="TrayShortcut" Name="WireGuard Service Manager" Description="WireGuard Service Manager" Target="[#wgsm.tray.exe]" WorkingDirectory="INSTALLFOLDER"/>
+				<RemoveFolder Id="CleanUpShortcuts" Directory="SHORTCUTSFOLDER" On="uninstall"/>
+				<RegistryValue Root="HKCU" Key="Software\WireGuard Service Manager" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+			</Component>
+		</ComponentGroup>
+	</Fragment>
+</Wix>
