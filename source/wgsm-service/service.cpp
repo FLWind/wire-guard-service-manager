@@ -5,19 +5,12 @@ CService* CService::m_pInst = nullptr;
 CService::CService() :
 	m_hSCManager(nullptr),
 	m_hService(nullptr),
-	m_hNotify(nullptr),
-	m_bManualActivated(FALSE)
+	m_hNotify(nullptr)
 {
 }
 
 VOID NETIOAPI_API_ IpInterfaceChangeCallback(_In_ PVOID CallerContext, _In_ PMIB_IPINTERFACE_ROW Row OPTIONAL, _In_ MIB_NOTIFICATION_TYPE NotificationType)
 {
-	// Manual mode activated
-	if (CService::Inst()->m_bManualActivated)
-	{
-		return;
-	}
-
 	// Ignore service messages
 	if (MibAddInstance != NotificationType && MibDeleteInstance != NotificationType)
 	{
@@ -266,7 +259,11 @@ HRESULT CService::GetState(enState* enWGState)
 
 HRESULT CService::Connect()
 {
-	m_bManualActivated = TRUE;
+	// Activate manual mode
+	if (m_hNotify)
+	{
+		CancelMibChangeNotify2(m_hNotify);
+	}
 
 	std::unique_lock<std::mutex> gl(m_mWGServiceLock);
 
@@ -283,7 +280,11 @@ HRESULT CService::Connect()
 
 HRESULT CService::Disconnect()
 {
-	m_bManualActivated = TRUE;
+	// Activate manual mode
+	if (m_hNotify)
+	{
+		CancelMibChangeNotify2(m_hNotify);
+	}
 
 	std::unique_lock<std::mutex> gl(m_mWGServiceLock);
 
