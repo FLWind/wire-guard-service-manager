@@ -1,6 +1,6 @@
 #pragma once
 
-#define WGSM_ROOT_REG_DIR_KEY L"SOFTWARE\\WGServiceManager"
+#define WGSM_ROOT_REG_DIR_KEY L"SOFTWARE\\WireGuard Service Manager"
 
 // Application properties
 #define WGSM_ENABLE_LOG L"EnableLog"
@@ -17,14 +17,8 @@ public:
 
     BOOL IsExistsValue(LPCWSTR strValueName);
 
-    std::wstring QueryString( LPCWSTR strValueName );
-    BOOL SetString(LPCWSTR strValueName, std::wstring strValue);
-   
+    std::wstring QueryString( LPCWSTR strValueName );   
     DWORD QueryDword(LPCWSTR strValueName);
-    BOOL SetDword(LPCWSTR strValueName, DWORD dwValue);
-
-    std::vector<BYTE> QueryVector(LPCWSTR strValueName);
-    BOOL SetVector(LPCWSTR strValueName, const std::vector<BYTE>& vValue);
 
 private:
     HKEY m_hKey;

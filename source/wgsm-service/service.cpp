@@ -11,92 +11,95 @@ CService::CService() :
 
 VOID IpInterfaceChangeCallback(_In_ PVOID CallerContext, _In_ PMIB_IPINTERFACE_ROW Row OPTIONAL, _In_ MIB_NOTIFICATION_TYPE NotificationType)
 {
-	std::unique_lock<std::mutex> gl(CService::Inst()->m_mWGServiceLock);
-
-	std::set<std::wstring> vDNSZones;
-	RequestAdapterDNSZone(vDNSZones);
-
-	BOOL bIsAladdinZone = (vDNSZones.end() == vDNSZones.find(CService::Inst()->m_strDNSZone)) ? FALSE : TRUE;
-
-	while (true)
+	if (MibAddInstance == NotificationType || MibDeleteInstance == NotificationType)
 	{
-		SERVICE_STATUS serviceStatus = { 0 };
-		if (!QueryServiceStatus(CService::Inst()->m_hService, &serviceStatus))
-		{
-			CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_QUERYSERVICESTATUS_PROBLEM, GetLastError());
-			return;
-		}
+		std::unique_lock<std::mutex> gl(CService::Inst()->m_mWGServiceLock);
 
-		if (bIsAladdinZone)
+		std::set<std::wstring> vDNSZones;
+		RequestAdapterDNSZone(vDNSZones);
+
+		BOOL bIsAladdinZone = (vDNSZones.end() == vDNSZones.find(CService::Inst()->m_strDNSZone)) ? FALSE : TRUE;
+
+		while (true)
 		{
-			switch (serviceStatus.dwCurrentState)
+			SERVICE_STATUS serviceStatus = { 0 };
+			if (!QueryServiceStatus(CService::Inst()->m_hService, &serviceStatus))
 			{
-			case SERVICE_STOPPED:
-				if (0 == StartService(CService::Inst()->m_hService, 0, nullptr))
-				{
-					CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STARTSERVICE_PROBLEM, GetLastError());
-					return;
-				}
-				break;
-			case SERVICE_START_PENDING:
+				CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_QUERYSERVICESTATUS_PROBLEM, GetLastError());
 				return;
-				break;
-			case SERVICE_STOP_PENDING:
-				break;
-			case SERVICE_RUNNING:
-				return;
-				break;
-			case SERVICE_CONTINUE_PENDING:
-				return;
-				break;
-			case SERVICE_PAUSE_PENDING:
-				break;
-			case SERVICE_PAUSED:
-				if (0 == StartService(CService::Inst()->m_hService, 0, nullptr))
-				{
-					CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STARTSERVICE_PROBLEM, GetLastError());
-					return;
-				}
-				break;
-			default:
-				return;
-				break;
 			}
-		}
-		else
-		{
-			switch (serviceStatus.dwCurrentState)
+
+			if (bIsAladdinZone)
 			{
-			case SERVICE_STOPPED:
-				return;
-				break;
-			case SERVICE_START_PENDING:
-				break;
-			case SERVICE_STOP_PENDING:
-				return;
-				break;
-			case SERVICE_RUNNING:
-				if(0 == ControlService(CService::Inst()->m_hService, SERVICE_CONTROL_STOP, &serviceStatus))
+				switch (serviceStatus.dwCurrentState)
 				{
-					CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STOPSERVICE_PROBLEM, GetLastError());
+				case SERVICE_STOPPED:
+					if (0 == StartService(CService::Inst()->m_hService, 0, nullptr))
+					{
+						CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STARTSERVICE_PROBLEM, GetLastError());
+						return;
+					}
+					break;
+				case SERVICE_START_PENDING:
 					return;
+					break;
+				case SERVICE_STOP_PENDING:
+					break;
+				case SERVICE_RUNNING:
+					return;
+					break;
+				case SERVICE_CONTINUE_PENDING:
+					return;
+					break;
+				case SERVICE_PAUSE_PENDING:
+					break;
+				case SERVICE_PAUSED:
+					if (0 == StartService(CService::Inst()->m_hService, 0, nullptr))
+					{
+						CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STARTSERVICE_PROBLEM, GetLastError());
+						return;
+					}
+					break;
+				default:
+					return;
+					break;
 				}
-				break;
-			case SERVICE_CONTINUE_PENDING:
-				return;
-				break;
-			case SERVICE_PAUSE_PENDING:
-				break;
-			case SERVICE_PAUSED:
-				if (0 == ControlService(CService::Inst()->m_hService, SERVICE_CONTROL_STOP, &serviceStatus))
+			}
+			else
+			{
+				switch (serviceStatus.dwCurrentState)
 				{
-					CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STOPSERVICE_PROBLEM, GetLastError());
+				case SERVICE_STOPPED:
 					return;
+					break;
+				case SERVICE_START_PENDING:
+					break;
+				case SERVICE_STOP_PENDING:
+					return;
+					break;
+				case SERVICE_RUNNING:
+					if (0 == ControlService(CService::Inst()->m_hService, SERVICE_CONTROL_STOP, &serviceStatus))
+					{
+						CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STOPSERVICE_PROBLEM, GetLastError());
+						return;
+					}
+					break;
+				case SERVICE_CONTINUE_PENDING:
+					return;
+					break;
+				case SERVICE_PAUSE_PENDING:
+					break;
+				case SERVICE_PAUSED:
+					if (0 == ControlService(CService::Inst()->m_hService, SERVICE_CONTROL_STOP, &serviceStatus))
+					{
+						CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STOPSERVICE_PROBLEM, GetLastError());
+						return;
+					}
+					break;
+				default:
+					return;
+					break;
 				}
-				break;
-			default:
-				return;
-				break;
 			}
 		}
 	}

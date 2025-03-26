@@ -10,8 +10,6 @@
 
 #define SWM_TRAYMSG				WM_APP//		the message ID sent to our window
 #define SWM_EXIT				WM_APP + 1//	close the window
-#define SWM_CONNECT				WM_APP + 2//	start WireGuard service
-#define SWM_DISCONNECT			WM_APP + 3//	stop WireGuard service
 
 #define UPDATE_STATUS_TIMER	1001
 
@@ -27,40 +25,48 @@ enState		g_enState = enPending;
 UINT		g_uiIcon = IDI_PENDING;
 UINT		g_uiHint = IDS_PENDING_STATE;
 
-void UpdateState()
+BOOL UpdateState()
 {
 	enState enState = enPending;
 	g_cService.GetState(enState); // Ignore errors, save Pending state if error
 
-	switch (enState)
+	if (enState != g_enState)
 	{
-	case enConnect:
-		g_uiIcon = IDI_CONNECT;
-		g_uiHint = IDS_CONNECT_STATE;
-		break;
+		switch (enState)
+		{
+		case enConnect:
+			g_uiIcon = IDI_CONNECT;
+			g_uiHint = IDS_CONNECT_STATE;
+			break;
 
-	case enDisconnect:
-		g_uiIcon = IDI_DISCONNECT;
-		g_uiHint = IDS_DISCONNECT_STATE;
-		break;
+		case enDisconnect:
+			g_uiIcon = IDI_DISCONNECT;
+			g_uiHint = IDS_DISCONNECT_STATE;
+			break;
 
-	default:
-		g_uiIcon = IDI_PENDING;
-		g_uiHint = IDS_PENDING_STATE;
-		break;
+		default:
+			g_uiIcon = IDI_PENDING;
+			g_uiHint = IDS_PENDING_STATE;
+			break;
+		}
+
+		g_enState = enState;
+
+		return TRUE;
 	}
 
-	g_enState = enState;
+	return FALSE;
 }
 
 void UpdateTray()
 {
-	UpdateState();
+	if (UpdateState())
+	{
+		nidApp.hIcon = LoadIcon(hInst, (LPCTSTR)MAKEINTRESOURCE(g_uiIcon)); // handle of the Icon to be displayed, obtained from LoadIcon 
+		LoadString(hInst, g_uiHint, nidApp.szTip, MAX_LOADSTRING);
 
-	nidApp.hIcon = LoadIcon(hInst, (LPCTSTR)MAKEINTRESOURCE(g_uiIcon)); // handle of the Icon to be displayed, obtained from LoadIcon 
-	LoadString(hInst, g_uiHint, nidApp.szTip, MAX_LOADSTRING);
-
-	Shell_NotifyIcon(NIM_MODIFY, &nidApp);
+		Shell_NotifyIcon(NIM_MODIFY, &nidApp);
+	}
 }
 
 // Forward declarations of functions included in this code module:
@@ -74,6 +80,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	_In_ LPWSTR    lpCmdLine,
 	_In_ int       nCmdShow)
 {
+	::MessageBox(NULL, L"test", L"test", MB_OK);
+
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
@@ -123,23 +131,7 @@ class CContextMenu
 
 	CContextMenu()
 	{
-		switch (g_enState)
-		{
-		case enConnect:
-			m_vMenu.push_back(std::make_pair(SWM_EXIT, LoadModuleString(IDS_DISCONNECT)));
-			break;
-
-		case enDisconnect:
-			m_vMenu.push_back(std::make_pair(SWM_EXIT, LoadModuleString(IDS_CONNECT)));
-			break;
-
-		default:
-			break;
-		}
-
 		m_vMenu.push_back(std::make_pair(SWM_EXIT, LoadModuleString(IDS_EXIT)));
-
-
 	}
 
 public:
@@ -239,6 +231,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	LoadString(hInstance, g_uiHint, nidApp.szTip, MAX_LOADSTRING);
 	Shell_NotifyIcon(NIM_ADD, &nidApp);
 
+	// Update state by timer
+	SetTimer(hWnd, UPDATE_STATUS_TIMER, 5000, nullptr);
+
 	return TRUE;
 }
 
@@ -256,9 +251,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
-	case WM_INITDIALOG:
-		SetTimer(hWnd, UPDATE_STATUS_TIMER, 5000, nullptr);
-		break;
 	case WM_USER_SHELLICON:
 		// systray msg callback 
 		switch (LOWORD(lParam))
@@ -293,14 +285,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case SWM_EXIT:
 			Shell_NotifyIcon(NIM_DELETE, &nidApp);
 			DestroyWindow(hWnd);
-			break;
-		case SWM_CONNECT:
-			g_cService.Connect();
-			UpdateTray();
-			break;
-		case SWM_DISCONNECT:
-			g_cService.Disconnect();
-			UpdateTray();
 			break;
 
 		default:
