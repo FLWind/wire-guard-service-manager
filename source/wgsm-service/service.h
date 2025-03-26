@@ -10,7 +10,7 @@ class CService
 	BOOL Stop();
 
 public:
-	friend VOID IpInterfaceChangeCallback(_In_ PVOID CallerContext, _In_ PMIB_IPINTERFACE_ROW Row OPTIONAL, _In_ MIB_NOTIFICATION_TYPE NotificationType);
+	friend VOID NETIOAPI_API_ IpInterfaceChangeCallback(_In_ PVOID CallerContext, _In_ PMIB_IPINTERFACE_ROW Row OPTIONAL, _In_ MIB_NOTIFICATION_TYPE NotificationType);
 
 	~CService();
 
