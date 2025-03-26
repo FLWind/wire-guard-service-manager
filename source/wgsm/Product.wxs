@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-	
+
 	<?if $(var.Platform)="x86"?>
-		<?define PDIR = "Win32"?>
-		<?define PF = "ProgramFilesFolder"?>
-		<?define W64 = "no"?>
+	<?define PDIR = "Win32"?>
+	<?define PF = "ProgramFilesFolder"?>
+	<?define W64 = "no"?>
 	<?elseif $(var.Platform)="x64"?>
-		<?define PDIR = "x64"?>
-		<?define PF = "ProgramFiles64Folder"?>
-		<?define W64 = "yes"?>
+	<?define PDIR = "x64"?>
+	<?define PF = "ProgramFiles64Folder"?>
+	<?define W64 = "yes"?>
 	<?elseif $(var.Platform)="ARM64"?>
-		<?define PDIR = "ARM64"?>
-		<?define PF = "ProgramFilesArm64Folder"?>
-		<?define W64 = "yes"?>
+	<?define PDIR = "ARM64"?>
+	<?define PF = "ProgramFilesArm64Folder"?>
+	<?define W64 = "yes"?>
 	<?endif ?>
-	
+
 	<Product Id="*" Name="WireGuard Service Manager" Language="1033" Version="0.0.0.1" Manufacturer="FLWind" UpgradeCode="433d1c9a-8adc-4590-9b53-133596eaad96">
 		<Package InstallerVersion="500" Comments="Copyright © 2025" Manufacturer="FLWind" Description="WireGuard Service Manager" Compressed="yes" InstallScope="perMachine" InstallPrivileges="elevated" />
 
@@ -53,6 +53,10 @@
 				<ServiceControl Id="WGSM" Name="WGSM" Remove="both" Wait="yes" />
 				<ServiceInstall Id="WGSM" Name="WGSM" DisplayName="WireGuard Service Manager" Type="ownProcess" Interactive="no" Start="auto" ErrorControl="ignore" />
 				<File Id="wgsm.service.exe" Name="wgsm-service.exe" Source="$(var.SolutionDir)build\wgsm-service\$(var.PDIR)\$(var.Configuration)\wgsm-service.exe" DiskId="1" />
+				<RegistryKey Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\WireGuard Service Manager" ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes"/>
+				<RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\WireGuard Service Manager" Name="DependOnService" Type="multiString" Action="append">
+					<MultiStringValue Name="DependOnService" Action="append" Type="multiString">RpcSs</MultiStringValue>
+				</RegistryValue>
 				<RegistryValue Root="HKLM" Key="Software\WireGuard Service Manager" Name="EnableLog" Type="integer" Value="1" />
 				<RegistryValue Root="HKLM" Key="Software\WireGuard Service Manager" Name="WireGuardServiceName" Type="string" Value="" />
 				<RegistryValue Root="HKLM" Key="Software\WireGuard Service Manager" Name="AutoConnectDNSZone" Type="string" Value="" />
