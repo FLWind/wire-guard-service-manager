@@ -36,4 +36,7 @@ private:
 
 	// Ethernet adapters update
 	HANDLE m_hNotify;
+
+	// Manual
+	BOOL m_bManualActivated;
 };

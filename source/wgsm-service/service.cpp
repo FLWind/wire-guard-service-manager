@@ -5,101 +5,111 @@ CService* CService::m_pInst = nullptr;
 CService::CService() :
 	m_hSCManager(nullptr),
 	m_hService(nullptr),
-	m_hNotify(nullptr)
+	m_hNotify(nullptr),
+	m_bManualActivated(FALSE)
 {
 }
 
 VOID NETIOAPI_API_ IpInterfaceChangeCallback(_In_ PVOID CallerContext, _In_ PMIB_IPINTERFACE_ROW Row OPTIONAL, _In_ MIB_NOTIFICATION_TYPE NotificationType)
 {
-	if (MibAddInstance == NotificationType || MibDeleteInstance == NotificationType)
+	// Manual mode activated
+	if (CService::Inst()->m_bManualActivated)
 	{
-		std::unique_lock<std::mutex> gl(CService::Inst()->m_mWGServiceLock);
+		return;
+	}
 
-		std::set<std::wstring> vDNSZones;
-		RequestAdapterDNSZone(vDNSZones);
+	// Ignore service messages
+	if (MibAddInstance != NotificationType && MibDeleteInstance != NotificationType)
+	{
+		return;
+	}
 
-		BOOL bIsAladdinZone = (vDNSZones.end() == vDNSZones.find(CService::Inst()->m_strDNSZone)) ? FALSE : TRUE;
+	std::unique_lock<std::mutex> gl(CService::Inst()->m_mWGServiceLock);
 
-		while (true)
+	std::set<std::wstring> vDNSZones;
+	RequestAdapterDNSZone(vDNSZones);
+
+	BOOL bIsAladdinZone = (vDNSZones.end() == vDNSZones.find(CService::Inst()->m_strDNSZone)) ? FALSE : TRUE;
+
+	while (true)
+	{
+		SERVICE_STATUS serviceStatus = { 0 };
+		if (!QueryServiceStatus(CService::Inst()->m_hService, &serviceStatus))
 		{
-			SERVICE_STATUS serviceStatus = { 0 };
-			if (!QueryServiceStatus(CService::Inst()->m_hService, &serviceStatus))
-			{
-				CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_QUERYSERVICESTATUS_PROBLEM, GetLastError());
-				return;
-			}
+			CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_QUERYSERVICESTATUS_PROBLEM, GetLastError());
+			return;
+		}
 
-			if (bIsAladdinZone)
+		if (bIsAladdinZone)
+		{
+			switch (serviceStatus.dwCurrentState)
 			{
-				switch (serviceStatus.dwCurrentState)
+			case SERVICE_STOPPED:
+				if (0 == StartService(CService::Inst()->m_hService, 0, nullptr))
 				{
-				case SERVICE_STOPPED:
-					if (0 == StartService(CService::Inst()->m_hService, 0, nullptr))
-					{
-						CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STARTSERVICE_PROBLEM, GetLastError());
-						return;
-					}
-					break;
-				case SERVICE_START_PENDING:
+					CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STARTSERVICE_PROBLEM, GetLastError());
 					return;
-					break;
-				case SERVICE_STOP_PENDING:
-					break;
-				case SERVICE_RUNNING:
-					return;
-					break;
-				case SERVICE_CONTINUE_PENDING:
-					return;
-					break;
-				case SERVICE_PAUSE_PENDING:
-					break;
-				case SERVICE_PAUSED:
-					if (0 == StartService(CService::Inst()->m_hService, 0, nullptr))
-					{
-						CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STARTSERVICE_PROBLEM, GetLastError());
-						return;
-					}
-					break;
-				default:
-					return;
-					break;
 				}
+				break;
+			case SERVICE_START_PENDING:
+				return;
+				break;
+			case SERVICE_STOP_PENDING:
+				break;
+			case SERVICE_RUNNING:
+				return;
+				break;
+			case SERVICE_CONTINUE_PENDING:
+				return;
+				break;
+			case SERVICE_PAUSE_PENDING:
+				break;
+			case SERVICE_PAUSED:
+				if (0 == StartService(CService::Inst()->m_hService, 0, nullptr))
+				{
+					CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STARTSERVICE_PROBLEM, GetLastError());
+					return;
+				}
+				break;
+			default:
+				return;
+				break;
 			}
-			else
+		}
+		else
+		{
+			switch (serviceStatus.dwCurrentState)
 			{
-				switch (serviceStatus.dwCurrentState)
+			case SERVICE_STOPPED:
+				return;
+				break;
+			case SERVICE_START_PENDING:
+				break;
+			case SERVICE_STOP_PENDING:
+				return;
+				break;
+			case SERVICE_RUNNING:
+				if (0 == ControlService(CService::Inst()->m_hService, SERVICE_CONTROL_STOP, &serviceStatus))
 				{
-				case SERVICE_STOPPED:
+					CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STOPSERVICE_PROBLEM, GetLastError());
 					return;
-					break;
-				case SERVICE_START_PENDING:
-					break;
-				case SERVICE_STOP_PENDING:
-					return;
-					break;
-				case SERVICE_RUNNING:
-					if (0 == ControlService(CService::Inst()->m_hService, SERVICE_CONTROL_STOP, &serviceStatus))
-					{
-						CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STOPSERVICE_PROBLEM, GetLastError());
-						return;
-					}
-					break;
-				case SERVICE_CONTINUE_PENDING:
-					return;
-					break;
-				case SERVICE_PAUSE_PENDING:
-					break;
-				case SERVICE_PAUSED:
-					if (0 == ControlService(CService::Inst()->m_hService, SERVICE_CONTROL_STOP, &serviceStatus))
-					{
-						CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STOPSERVICE_PROBLEM, GetLastError());
-						return;
-					}
-					break;
-				default:
-					return;
-					break;
 				}
+				break;
+			case SERVICE_CONTINUE_PENDING:
+				return;
+				break;
+			case SERVICE_PAUSE_PENDING:
+				break;
+			case SERVICE_PAUSED:
+				if (0 == ControlService(CService::Inst()->m_hService, SERVICE_CONTROL_STOP, &serviceStatus))
+				{
+					CEventLog::getInstance().Report(EVENTLOG_ERROR_TYPE, IDS_STOPSERVICE_PROBLEM, GetLastError());
+					return;
+				}
+				break;
+			default:
+				return;
+				break;
 			}
 		}
 	}
@@ -256,6 +266,8 @@ HRESULT CService::GetState(enState* enWGState)
 
 HRESULT CService::Connect()
 {
+	m_bManualActivated = TRUE;
+
 	std::unique_lock<std::mutex> gl(m_mWGServiceLock);
 
 	if (0 == StartService(CService::Inst()->m_hService, 0, nullptr))
@@ -271,6 +283,8 @@ HRESULT CService::Connect()
 
 HRESULT CService::Disconnect()
 {
+	m_bManualActivated = TRUE;
+
 	std::unique_lock<std::mutex> gl(m_mWGServiceLock);
 
 	SERVICE_STATUS serviceStatus = { 0 };
