@@ -12,3 +12,5 @@ After installing the product, you will need to make some changes to the Windows 
 1. You must specify the name of the Wireguard service in the "WireGuardServiceName" registry value (e.g., "WireguardTunnel$Home").
 2. You can set the DNS zone for the network adapter by specifying it in the "AutoConnectDNSZone" registry value. This will try to connect to VPN using this DNS zone (e.g., "home.local").
 3. You can disable logging by setting the "EnableLog" parameter to 0 in the EventLog.
+
+If you need any help with setting up or assembling the product, don't hesitate to get in touch with me via email at mailto:yury@akimov.pro
