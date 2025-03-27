@@ -15,7 +15,7 @@
 	<?define W64 = "yes"?>
 	<?endif ?>
 
-	<Product Id="*" Name="WireGuard Service Manager" Language="1033" Version="0.0.0.1" Manufacturer="FLWind" UpgradeCode="433d1c9a-8adc-4590-9b53-133596eaad96">
+	<Product Id="*" Name="WireGuard Service Manager" Language="1033" Version="0.0.0.2" Manufacturer="FLWind" UpgradeCode="433d1c9a-8adc-4590-9b53-133596eaad96">
 		<Package InstallerVersion="500" Comments="Copyright © 2025" Manufacturer="FLWind" Description="WireGuard Service Manager" Compressed="yes" InstallScope="perMachine" InstallPrivileges="elevated" />
 
 		<MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
@@ -23,6 +23,8 @@
 
 		<Property Id="ARPNOREPAIR" Value="1"/>
 		<SetProperty Id="ARPNOMODIFY" Value="1" After="InstallValidate" Sequence="execute"/>
+
+		<Icon Id="wgsm.ico" SourceFile="wgsm.ico"/>
 		<Property Id="ARPPRODUCTICON" Value="wgsm.ico" />
 
 		<WixVariable Id="WixUIBannerBmp" Value="$(var.ProjectDir)WixUIBanner.bmp" />
