@@ -11,12 +11,6 @@ CService::CService() :
 
 VOID NETIOAPI_API_ IpInterfaceChangeCallback(_In_ PVOID CallerContext, _In_ PMIB_IPINTERFACE_ROW Row OPTIONAL, _In_ MIB_NOTIFICATION_TYPE NotificationType)
 {
-	// Ignore service messages
-	if (MibAddInstance != NotificationType && MibDeleteInstance != NotificationType)
-	{
-		return;
-	}
-
 	std::unique_lock<std::mutex> gl(CService::Inst()->m_mWGServiceLock);
 
 	std::set<std::wstring> vDNSZones;
